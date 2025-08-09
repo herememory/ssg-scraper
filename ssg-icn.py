@@ -2,12 +2,20 @@ import os
 import time
 import random
 import pandas as pd
-import undetected_chromedriver as uc
+from selenium import webdriver
+from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.common.exceptions import WebDriverException, TimeoutException, NoSuchElementException
 from supabase import create_client, Client
+# ##############################################################
+# ## 여기를 수정했습니다! (webdriver-manager 추가) ##
+# ##############################################################
+from selenium.webdriver.chrome.service import Service as ChromeService
+from webdriver_manager.chrome import ChromeDriverManager
+# ##############################################################
+
 
 # --- 설정 ---
 URL = "https://www.ssgdfs.com/kr/customer/initCtStor?tab_no=2&tab_stor_no=10"
@@ -34,21 +42,22 @@ def save_to_supabase(df: pd.DataFrame, supabase_client: Client):
 
 
 # --- 드라이버 실행 ---
-print("🕵️  '드라이버 자동 감지 모드'로 브라우저를 실행합니다...")
+print("🕵️  '드라이버 자동 관리 모드'로 브라우저를 실행합니다...")
 driver = None
 try:
-    options = uc.ChromeOptions()
+    options = Options()
     options.add_argument('--headless=new')
     options.add_argument('--no-sandbox')
     options.add_argument('--disable-dev-shm-usage')
     options.add_argument('--disable-gpu')
+    options.add_argument("user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36")
     
     # ##############################################################
-    # ## 여기를 수정했습니다! (version_main 제거) ##
+    # ## 여기를 수정했습니다! (webdriver-manager로 드라이버 실행) ##
     # ##############################################################
-    # version_main 옵션을 제거하여 라이브러리가 서버의 크롬 버전을
-    # 자동으로 감지하고 맞는 드라이버를 사용하도록 합니다.
-    driver = uc.Chrome(options=options)
+    # 자동으로 현재 환경의 크롬 버전에 맞는 드라이버를 다운로드하고 실행합니다.
+    service = ChromeService(ChromeDriverManager().install())
+    driver = webdriver.Chrome(service=service, options=options)
     # ##############################################################
 
     driver.set_window_size(1920, 1080)
