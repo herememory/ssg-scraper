@@ -31,22 +31,14 @@ jobs:
       - name: Install Dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install pandas openpyxl selenium supabase
+          # openpyxl 라이브러리는 더 이상 필요 없으므로 삭제
+          pip install pandas selenium supabase
 
-      # 4. (디버깅용) 현재 폴더의 모든 파일 목록 출력하기
-      - name: List files in the repository
-        run: ls -R
-
-      # 5. 파이썬 스크립트 실행하기
+      # 4. 파이썬 스크립트 실행하기
       - name: Run Python Scraper
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
-        run: python ssg-icn.py # <-- 실제 파일 이름으로 수정 완료!
+        run: python ssg-icn.py
 
-      # 6. 생성된 엑셀 파일을 결과물로 업로드하기
-      - name: Upload Excel Artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: ssg-brand-report
-          path: ssg_duty_free_brands.xlsx
+      # 5. 엑셀 파일 업로드 단계를 완전히 삭제했습니다.
