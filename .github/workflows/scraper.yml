@@ -39,7 +39,7 @@ jobs:
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
-        run: python scraper-gemini.py
+        run: python ssg-icn.py
 
       # 5. 생성된 엑셀 파일을 결과물로 업로드하기 (선택 사항)
       - name: Upload Excel Artifact
