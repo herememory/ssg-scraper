@@ -2,8 +2,7 @@ import os
 import time
 import random
 import pandas as pd
-from selenium import webdriver
-from selenium.webdriver.chrome.options import Options
+import undetected_chromedriver as uc
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
@@ -12,7 +11,6 @@ from supabase import create_client, Client
 # ##############################################################
 # ## 여기를 수정했습니다! (webdriver-manager 추가) ##
 # ##############################################################
-from selenium.webdriver.chrome.service import Service as ChromeService
 from webdriver_manager.chrome import ChromeDriverManager
 # ##############################################################
 
@@ -42,22 +40,24 @@ def save_to_supabase(df: pd.DataFrame, supabase_client: Client):
 
 
 # --- 드라이버 실행 ---
-print("🕵️  '드라이버 자동 관리 모드'로 브라우저를 실행합니다...")
+print("🕵️  '하이브리드 최종 모드'로 브라우저를 실행합니다...")
 driver = None
 try:
-    options = Options()
+    options = uc.ChromeOptions()
     options.add_argument('--headless=new')
     options.add_argument('--no-sandbox')
     options.add_argument('--disable-dev-shm-usage')
     options.add_argument('--disable-gpu')
-    options.add_argument("user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36")
     
     # ##############################################################
-    # ## 여기를 수정했습니다! (webdriver-manager로 드라이버 실행) ##
+    # ## 여기를 수정했습니다! (하이브리드 방식으로 드라이버 실행) ##
     # ##############################################################
-    # 자동으로 현재 환경의 크롬 버전에 맞는 드라이버를 다운로드하고 실행합니다.
-    service = ChromeService(ChromeDriverManager().install())
-    driver = webdriver.Chrome(service=service, options=options)
+    # 1. webdriver-manager가 버전에 맞는 드라이버 경로를 찾고,
+    print("WebDriver Manager를 사용하여 호환 드라이버를 찾는 중...")
+    driver_path = ChromeDriverManager().install()
+    print(f"드라이버 경로: {driver_path}")
+    # 2. undetected-chromedriver가 그 드라이버를 이용해 실행합니다.
+    driver = uc.Chrome(driver_executable_path=driver_path, options=options)
     # ##############################################################
 
     driver.set_window_size(1920, 1080)
