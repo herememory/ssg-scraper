@@ -12,7 +12,6 @@ from supabase import create_client, Client
 
 # --- 설정 ---
 URL = "https://www.ssgdfs.com/kr/customer/initCtStor?tab_no=2&tab_stor_no=10"
-EXCEL_FILENAME = "ssg_duty_free_brands.xlsx"
 ALL_BRANDS_DATA = []
 
 # GitHub Secrets에 저장된 Supabase 정보를 환경 변수에서 안전하게 불러옵니다.
@@ -41,10 +40,9 @@ def save_to_supabase(df: pd.DataFrame, supabase_client: Client):
 
 
 # --- 드라이버 실행 ---
-print("🕵️  'GitHub Actions' 모드로 브라우저를 실행합니다...")
+print("🕵️  'Supabase 직접 저장 모드'로 브라우저를 실행합니다...")
 driver = None
 try:
-    # GitHub Actions와 같은 서버 환경용 헤드리스 옵션 설정
     options = Options()
     options.add_argument('--headless=new')
     options.add_argument('--no-sandbox')
@@ -52,7 +50,6 @@ try:
     options.add_argument('--disable-gpu')
     options.add_argument("user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36")
     
-    # 표준 Selenium WebDriver 실행
     driver = webdriver.Chrome(options=options)
     driver.set_window_size(1920, 1080)
     
@@ -71,32 +68,25 @@ try:
     except Exception:
         print("-> 팝업이 발견되지 않았습니다. 계속 진행합니다.")
 
-    # --- 보이는 요소만 필터링 ---
+    # --- 크롤링 로직 (이전과 동일) ---
     wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, "ul.stordFloor li")))
-    all_floor_elements = driver.find_elements(By.CSS_SELECTOR, "ul.stordFloor li")
+    all_floor_elements = driver.find_elements(By.CSS_Selector, "ul.stordFloor li")
     visible_floor_elements = [elem for elem in all_floor_elements if elem.is_displayed()]
-    
-    # --- 순서대로 처리 ---
     menu_indices = list(range(len(visible_floor_elements)))
     
     print(f"📊 화면에 보이는 {len(menu_indices)}개의 메뉴를 '순서대로' 처리합니다.")
     print("-" * 40)
     
-    # --- 1. 사이드 메뉴 순회 루프 ---
     for i in menu_indices:
         floor_name = ""
         try:
-            current_button = [
-                elem for elem in driver.find_elements(By.CSS_SELECTOR, "ul.stordFloor li") if elem.is_displayed()
-            ][i].find_element(By.TAG_NAME, "a")
-
+            current_button = [elem for elem in driver.find_elements(By.CSS_SELECTOR, "ul.stordFloor li") if elem.is_displayed()][i].find_element(By.TAG_NAME, "a")
             floor_name = current_button.text.strip() or f"인덱스 {i}번 메뉴"
             print(f"🖱️  '{floor_name}' 메뉴 처리 시작...")
             
             driver.execute_script("arguments[0].click();", current_button)
             time.sleep(random.uniform(2.5, 3.5))
 
-            # --- 2. 페이지 넘김 로직 ---
             total_pages = 1
             try:
                 page_links = driver.find_elements(By.CSS_SELECTOR, ".listPaging span.page a[data-value]")
@@ -113,10 +103,7 @@ try:
                 if page_num > 1:
                     try:
                         driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
-                        # 마지막 페이지 버튼과 일반 페이지 버튼을 모두 찾을 수 있도록 CSS 선택자 수정
-                        page_button = wait.until(EC.element_to_be_clickable(
-                            (By.CSS_SELECTOR, f".listPaging a.num[data-value='{page_num}'], .listPaging a[data-value='{page_num}'] button.last")
-                        ))
+                        page_button = wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR, f".listPaging a.num[data-value='{page_num}'], .listPaging a[data-value='{page_num}'] button.last")))
                         driver.execute_script("arguments[0].click();", page_button)
                         time.sleep(random.uniform(2.5, 4.0))
                     except Exception as page_e:
@@ -133,6 +120,8 @@ try:
                     try: brand_name = item.find_element(By.CLASS_NAME, "brandName").text.strip()
                     except: brand_name = ""
                     try: location = item.find_element(By.CLASS_NAME, "floor").text.strip()
+                    except: location = ""
+                    try: category = item.find_element(By.CLASS_NAME, "sort").text.strip()
                     except: category = ""
                     try: tel = item.find_element(By.CLASS_NAME, "tel").text.strip()
                     except: tel = ""
@@ -162,21 +151,13 @@ finally:
             print("="*50)
             pd.set_option('display.max_rows', None)
             print(df)
-
-            try:
-                df.to_excel(EXCEL_FILENAME, index=False, engine='openpyxl')
-                print("\n" + "="*50)
-                print(f"✅ 결과가 '{EXCEL_FILENAME}' 파일로 저장되었습니다.")
-                print("="*50)
-            except Exception as e:
-                print(f"\n❌ 엑셀 파일 저장 중 오류가 발생했습니다: {e}")
             
+            # Supabase 저장 로직만 남김
             if SUPABASE_URL and SUPABASE_KEY:
                 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
                 save_to_supabase(df, supabase)
             else:
                 print("\nSupabase URL 또는 Key가 설정되지 않아 데이터베이스 저장을 건너뜁니다.")
-
         else:
             print("\n결과: 수집된 데이터가 없습니다.")
         
