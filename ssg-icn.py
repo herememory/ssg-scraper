@@ -13,7 +13,7 @@ from supabase import create_client, Client
 URL = "https://www.ssgdfs.com/kr/customer/initCtStor?tab_no=2&tab_stor_no=10"
 ALL_BRANDS_DATA = []
 
-# GitHub Secrets에 저장된 Supabase 정보를 환경 변수에서 안전하게 불러옵니다.
+# GitHub Secrets에서 Supabase 정보 불러오기
 SUPABASE_URL = os.getenv("SUPABASE_URL")
 SUPABASE_KEY = os.getenv("SUPABASE_KEY")
 
@@ -34,7 +34,7 @@ def save_to_supabase(df: pd.DataFrame, supabase_client: Client):
 
 
 # --- 드라이버 실행 ---
-print("🕵️  '드라이버 버전 고정 모드'로 브라우저를 실행합니다...")
+print("🕵️  '드라이버 자동 감지 모드'로 브라우저를 실행합니다...")
 driver = None
 try:
     options = uc.ChromeOptions()
@@ -44,10 +44,11 @@ try:
     options.add_argument('--disable-gpu')
     
     # ##############################################################
-    # ## 여기를 수정했습니다! (드라이버 버전 130으로 고정) ##
+    # ## 여기를 수정했습니다! (version_main 제거) ##
     # ##############################################################
-    # GitHub Actions 서버의 크롬 버전에 맞게 드라이버 버전을 130으로 고정합니다.
-    driver = uc.Chrome(options=options, version_main=130)
+    # version_main 옵션을 제거하여 라이브러리가 서버의 크롬 버전을
+    # 자동으로 감지하고 맞는 드라이버를 사용하도록 합니다.
+    driver = uc.Chrome(options=options)
     # ##############################################################
 
     driver.set_window_size(1920, 1080)
