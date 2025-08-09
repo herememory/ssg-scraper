@@ -26,14 +26,7 @@ def save_to_supabase(df: pd.DataFrame, supabase_client: Client):
         print("Supabase에 저장할 데이터가 없습니다.")
         return
     print("\nSupabase에 데이터 저장을 시작합니다...")
-
-    # ##############################################################
-    # ## 여기를 수정했습니다! (ID 생성 시 영어 컬럼명 사용) ##
-    # ##############################################################
-    # '브랜드명', '위치' 대신 영어 컬럼명인 'brand_name', 'location'을 사용합니다.
     df['id'] = df['brand_name'] + '-' + df['location']
-    # ##############################################################
-    
     records_to_insert = df.to_dict(orient="records")
     try:
         response = supabase_client.table("brands").upsert(records_to_insert, on_conflict="id").execute()
@@ -149,7 +142,14 @@ finally:
     if driver:
         if ALL_BRANDS_DATA:
             df = pd.DataFrame(ALL_BRANDS_DATA)
-            df.drop_duplicates(inplace=True)
+
+            # ##############################################################
+            # ## 여기를 수정했습니다! (ID 기준 중복 제거) ##
+            # ##############################################################
+            # '브랜드명'과 '위치'가 모두 동일한 데이터가 있다면, 첫 번째 것만 남기고 제거합니다.
+            df.drop_duplicates(subset=['브랜드명', '위치'], keep='first', inplace=True)
+            # ##############################################################
+            
             df.sort_values(by=["위치", "브랜드명"], inplace=True)
             df.reset_index(drop=True, inplace=True)
             
@@ -159,18 +159,12 @@ finally:
             print(df)
             
             if SUPABASE_URL and SUPABASE_KEY:
-                # ##############################################################
-                # ## 여기를 수정했습니다! (데이터프레임 컬럼명 변경) ##
-                # ##############################################################
-                # Supabase로 보내기 전, DataFrame의 컬럼명을 영어로 변경합니다.
                 df_to_save = df.rename(columns={
                     '브랜드명': 'brand_name',
                     '위치': 'location',
                     '카테고리': 'category',
                     '연락처': 'tel'
                 })
-                # ##############################################################
-                
                 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
                 save_to_supabase(df_to_save, supabase)
             else:
