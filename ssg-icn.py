@@ -19,6 +19,7 @@ SUPABASE_KEY = os.getenv("SUPABASE_KEY")
 
 
 def save_to_supabase(df: pd.DataFrame, supabase_client: Client):
+    """Pandas DataFrame을 Supabase에 저장하는 함수"""
     if df.empty:
         print("Supabase에 저장할 데이터가 없습니다.")
         return
@@ -33,7 +34,7 @@ def save_to_supabase(df: pd.DataFrame, supabase_client: Client):
 
 
 # --- 드라이버 실행 ---
-print("🕵️  '봇 탐지 우회 + GitHub Actions' 모드로 브라우저를 실행합니다...")
+print("🕵️  '드라이버 버전 고정 모드'로 브라우저를 실행합니다...")
 driver = None
 try:
     options = uc.ChromeOptions()
@@ -42,8 +43,13 @@ try:
     options.add_argument('--disable-dev-shm-usage')
     options.add_argument('--disable-gpu')
     
-    # undetected-chromedriver를 다시 사용합니다.
-    driver = uc.Chrome(options=options)
+    # ##############################################################
+    # ## 여기를 수정했습니다! (드라이버 버전 130으로 고정) ##
+    # ##############################################################
+    # GitHub Actions 서버의 크롬 버전에 맞게 드라이버 버전을 130으로 고정합니다.
+    driver = uc.Chrome(options=options, version_main=130)
+    # ##############################################################
+
     driver.set_window_size(1920, 1080)
     
     driver.get(URL)
@@ -73,7 +79,10 @@ try:
     for i in menu_indices:
         floor_name = ""
         try:
-            current_button = [elem for elem in driver.find_elements(By.CSS_SELECTOR, "ul.stordFloor li") if elem.is_displayed()][i].find_element(By.TAG_NAME, "a")
+            current_button = [
+                elem for elem in driver.find_elements(By.CSS_SELECTOR, "ul.stordFloor li") if elem.is_displayed()
+            ][i].find_element(By.TAG_NAME, "a")
+
             floor_name = current_button.text.strip() or f"인덱스 {i}번 메뉴"
             print(f"🖱️  '{floor_name}' 메뉴 처리 시작...")
             
@@ -96,7 +105,9 @@ try:
                 if page_num > 1:
                     try:
                         driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
-                        page_button = wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR, f".listPaging a.num[data-value='{page_num}'], .listPaging a[data-value='{page_num}'] button.last")))
+                        page_button = wait.until(EC.element_to_be_clickable(
+                            (By.CSS_SELECTOR, f".listPaging a.num[data-value='{page_num}'], .listPaging a[data-value='{page_num}'] button.last")
+                        ))
                         driver.execute_script("arguments[0].click();", page_button)
                         time.sleep(random.uniform(2.5, 4.0))
                     except Exception as page_e:
