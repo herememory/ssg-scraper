@@ -67,7 +67,6 @@ try:
     except Exception:
         print("-> 팝업이 발견되지 않았습니다. 계속 진행합니다.")
 
-    # --- 이하 크롤링 로직은 동일 ---
     wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, "ul.stordFloor li")))
     all_floor_elements = driver.find_elements(By.CSS_SELECTOR, "ul.stordFloor li")
     visible_floor_elements = [elem for elem in all_floor_elements if elem.is_displayed()]
@@ -127,7 +126,14 @@ try:
                     except: category = ""
                     try: tel = item.find_element(By.CLASS_NAME, "tel").text.strip()
                     except: tel = ""
-                    ALL_BRANDS_DATA.append({"브랜드명": brand_name, "위치": location, "카테고리": category, "연락처": tel})
+                    
+                    # ##############################################################
+                    # ## 여기를 수정했습니다! (빈 데이터 필터링) ##
+                    # ##############################################################
+                    # 브랜드 이름이 있을 경우에만 리스트에 추가합니다.
+                    if brand_name:
+                        ALL_BRANDS_DATA.append({"브랜드명": brand_name, "위치": location, "카테고리": category, "연락처": tel})
+                    # ##############################################################
 
             print(f"    -> '{floor_name}' 메뉴 처리 완료.")
             print("-" * 40)
@@ -142,14 +148,7 @@ finally:
     if driver:
         if ALL_BRANDS_DATA:
             df = pd.DataFrame(ALL_BRANDS_DATA)
-
-            # ##############################################################
-            # ## 여기를 수정했습니다! (ID 기준 중복 제거) ##
-            # ##############################################################
-            # '브랜드명'과 '위치'가 모두 동일한 데이터가 있다면, 첫 번째 것만 남기고 제거합니다.
             df.drop_duplicates(subset=['브랜드명', '위치'], keep='first', inplace=True)
-            # ##############################################################
-            
             df.sort_values(by=["위치", "브랜드명"], inplace=True)
             df.reset_index(drop=True, inplace=True)
             
