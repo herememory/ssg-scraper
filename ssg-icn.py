@@ -2,8 +2,7 @@ import os
 import time
 import random
 import pandas as pd
-from selenium import webdriver
-from selenium.webdriver.chrome.options import Options
+import undetected_chromedriver as uc
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
@@ -20,19 +19,13 @@ SUPABASE_KEY = os.getenv("SUPABASE_KEY")
 
 
 def save_to_supabase(df: pd.DataFrame, supabase_client: Client):
-    """Pandas DataFrame을 Supabase에 저장하는 함수"""
     if df.empty:
         print("Supabase에 저장할 데이터가 없습니다.")
         return
     print("\nSupabase에 데이터 저장을 시작합니다...")
-    # '브랜드명-위치'를 조합하여 고유 ID 생성
     df['id'] = df['브랜드명'] + '-' + df['위치']
-    
-    # DataFrame을 Supabase에 맞는 딕셔너리 리스트 형태로 변환
     records_to_insert = df.to_dict(orient="records")
-
     try:
-        # upsert=True 옵션으로 중복 방지 및 업데이트
         response = supabase_client.table("brands").upsert(records_to_insert, on_conflict="id").execute()
         print(f"✅ Supabase 저장 완료! {len(response.data)}개 레코드가 처리되었습니다.")
     except Exception as e:
@@ -40,17 +33,17 @@ def save_to_supabase(df: pd.DataFrame, supabase_client: Client):
 
 
 # --- 드라이버 실행 ---
-print("🕵️  'Supabase 직접 저장 모드'로 브라우저를 실행합니다...")
+print("🕵️  '봇 탐지 우회 + GitHub Actions' 모드로 브라우저를 실행합니다...")
 driver = None
 try:
-    options = Options()
+    options = uc.ChromeOptions()
     options.add_argument('--headless=new')
     options.add_argument('--no-sandbox')
     options.add_argument('--disable-dev-shm-usage')
     options.add_argument('--disable-gpu')
-    options.add_argument("user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36")
     
-    driver = webdriver.Chrome(options=options)
+    # undetected-chromedriver를 다시 사용합니다.
+    driver = uc.Chrome(options=options)
     driver.set_window_size(1920, 1080)
     
     driver.get(URL)
@@ -68,9 +61,9 @@ try:
     except Exception:
         print("-> 팝업이 발견되지 않았습니다. 계속 진행합니다.")
 
-    # --- 크롤링 로직 (이전과 동일) ---
+    # --- 이하 크롤링 로직은 동일 ---
     wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, "ul.stordFloor li")))
-    all_floor_elements = driver.find_elements(By.CSS_Selector, "ul.stordFloor li")
+    all_floor_elements = driver.find_elements(By.CSS_SELECTOR, "ul.stordFloor li")
     visible_floor_elements = [elem for elem in all_floor_elements if elem.is_displayed()]
     menu_indices = list(range(len(visible_floor_elements)))
     
@@ -135,10 +128,8 @@ try:
             print(f"    -> {error_msg_context} 메뉴 처리 중 오류 발생: {e}. 다음 메뉴로 넘어갑니다.")
             print("-" * 40)
             continue
-
 except Exception as e:
     print(f"❌ 전체 크롤링 과정에서 심각한 오류가 발생했습니다: {e}")
-
 finally:
     if driver:
         if ALL_BRANDS_DATA:
@@ -152,7 +143,6 @@ finally:
             pd.set_option('display.max_rows', None)
             print(df)
             
-            # Supabase 저장 로직만 남김
             if SUPABASE_URL and SUPABASE_KEY:
                 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
                 save_to_supabase(df, supabase)
@@ -160,7 +150,6 @@ finally:
                 print("\nSupabase URL 또는 Key가 설정되지 않아 데이터베이스 저장을 건너뜁니다.")
         else:
             print("\n결과: 수집된 데이터가 없습니다.")
-        
         try:
             print("\n브라우저를 종료합니다.")
             driver.quit()
