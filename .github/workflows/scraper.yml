@@ -22,9 +22,9 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           # ##############################################################
-          # ## 여기를 수정했습니다! (라이브러리 변경) ##
+          # ## 여기를 수정했습니다! (모든 필요 라이브러리 설치) ##
           # ##############################################################
-          pip install pandas selenium supabase webdriver-manager
+          pip install pandas undetected-chromedriver supabase webdriver-manager
           # ##############################################################
 
       - name: Run Python Scraper
