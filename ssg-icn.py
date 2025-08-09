@@ -8,11 +8,7 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.common.exceptions import WebDriverException, TimeoutException, NoSuchElementException
 from supabase import create_client, Client
-# ##############################################################
-# ## 여기를 수정했습니다! (webdriver-manager 추가) ##
-# ##############################################################
 from webdriver_manager.chrome import ChromeDriverManager
-# ##############################################################
 
 
 # --- 설정 ---
@@ -30,7 +26,14 @@ def save_to_supabase(df: pd.DataFrame, supabase_client: Client):
         print("Supabase에 저장할 데이터가 없습니다.")
         return
     print("\nSupabase에 데이터 저장을 시작합니다...")
-    df['id'] = df['브랜드명'] + '-' + df['위치']
+
+    # ##############################################################
+    # ## 여기를 수정했습니다! (ID 생성 시 영어 컬럼명 사용) ##
+    # ##############################################################
+    # '브랜드명', '위치' 대신 영어 컬럼명인 'brand_name', 'location'을 사용합니다.
+    df['id'] = df['brand_name'] + '-' + df['location']
+    # ##############################################################
+    
     records_to_insert = df.to_dict(orient="records")
     try:
         response = supabase_client.table("brands").upsert(records_to_insert, on_conflict="id").execute()
@@ -49,16 +52,10 @@ try:
     options.add_argument('--disable-dev-shm-usage')
     options.add_argument('--disable-gpu')
     
-    # ##############################################################
-    # ## 여기를 수정했습니다! (하이브리드 방식으로 드라이버 실행) ##
-    # ##############################################################
-    # 1. webdriver-manager가 버전에 맞는 드라이버 경로를 찾고,
     print("WebDriver Manager를 사용하여 호환 드라이버를 찾는 중...")
     driver_path = ChromeDriverManager().install()
     print(f"드라이버 경로: {driver_path}")
-    # 2. undetected-chromedriver가 그 드라이버를 이용해 실행합니다.
     driver = uc.Chrome(driver_executable_path=driver_path, options=options)
-    # ##############################################################
 
     driver.set_window_size(1920, 1080)
     
@@ -92,7 +89,6 @@ try:
             current_button = [
                 elem for elem in driver.find_elements(By.CSS_SELECTOR, "ul.stordFloor li") if elem.is_displayed()
             ][i].find_element(By.TAG_NAME, "a")
-
             floor_name = current_button.text.strip() or f"인덱스 {i}번 메뉴"
             print(f"🖱️  '{floor_name}' 메뉴 처리 시작...")
             
@@ -107,7 +103,6 @@ try:
                     total_pages = max(all_page_numbers) if all_page_numbers else 1
             except Exception as e:
                 print(f"    -> 페이지 수 파악 중 오류 발생: {e}. 1페이지만 진행합니다.")
-
             print(f"    -> '{floor_name}'에는 총 {total_pages}개의 페이지가 있습니다.")
 
             for page_num in range(1, total_pages + 1):
@@ -143,7 +138,6 @@ try:
 
             print(f"    -> '{floor_name}' 메뉴 처리 완료.")
             print("-" * 40)
-
         except Exception as e:
             error_msg_context = f"'{floor_name}'" if floor_name else f"인덱스 {i}번"
             print(f"    -> {error_msg_context} 메뉴 처리 중 오류 발생: {e}. 다음 메뉴로 넘어갑니다.")
@@ -165,8 +159,20 @@ finally:
             print(df)
             
             if SUPABASE_URL and SUPABASE_KEY:
+                # ##############################################################
+                # ## 여기를 수정했습니다! (데이터프레임 컬럼명 변경) ##
+                # ##############################################################
+                # Supabase로 보내기 전, DataFrame의 컬럼명을 영어로 변경합니다.
+                df_to_save = df.rename(columns={
+                    '브랜드명': 'brand_name',
+                    '위치': 'location',
+                    '카테고리': 'category',
+                    '연락처': 'tel'
+                })
+                # ##############################################################
+                
                 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
-                save_to_supabase(df, supabase)
+                save_to_supabase(df_to_save, supabase)
             else:
                 print("\nSupabase URL 또는 Key가 설정되지 않아 데이터베이스 저장을 건너뜁니다.")
         else:
